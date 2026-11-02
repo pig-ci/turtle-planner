@@ -87,6 +87,30 @@ body {
     margin-bottom: 20px;
 }
 
+/* 處理 Logo 與文字的排版 */
+.header-text {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* 不限制大小：讓 SVG 依照自身比例顯示 */
+.header-logo {
+    width: auto;
+    height: auto;
+    max-width: 150px; 
+    max-height: 80px; 
+    object-fit: contain;
+    flex-shrink: 0;
+    /* 確保濾鏡切換時有平滑的過度動畫 */
+    transition: filter 0.3s ease;
+}
+
+/* 暗色模式：將純黑白 Logo 顏色反轉 */
+[data-theme="dark"] .header-logo {
+    filter: invert(1) hue-rotate(180deg);
+}
+
 .header-text h1 {
     margin: 0 0 8px 0;
     font-size: 24px;
