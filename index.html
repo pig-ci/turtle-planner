@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今天要完成什麼？</title>
+    <style>
+        /* 預設亮色主題變數 */
+        :root {
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #6c757d;
+            --border-color: #dee2e6;
+            --primary-color: #0d6efd;
+            --danger-color: #dc3545;
+            --danger-bg: #f8d7da;
+            --input-bg: #ffffff;
+            --readonly-bg: #f1f3f5;
+            --radius: 8px;
+            --counter-bg: #e2e8f0;
+            --counter-text: #4a5568;
+            --btn-add-border: #cbd5e1;
+            --btn-add-hover-bg: #f1f5f9;
+            --btn-add-hover-border: #94a3b8;
+            --shadow: 0 1px 3px rgba(0,0,0,0.05);
+            --checkbox-border: #adb5bd;
+            --success-color: #10b981;
+            --success-hover: #059669;
+            --disabled-bg: #e9ecef;
+            --disabled-text: #adb5bd;
+            --error-color: #ef4444;
+            --overlay-bg: rgba(0, 0, 0, 0.5);
+            --modal-shadow: 0 20px 50px rgba(0,0,0,0.25);
+            --toast-shadow: 0 8px 24px rgba(0,0,0,0.14);
+        }
+
+        /* 暗色主題變數 */
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --border-color: #333333;
+            --primary-color: #3b82f6;
+            --danger-color: #f87171;
+            --danger-bg: #451a1a;
+            --input-bg: #2d2d2d;
+            --readonly-bg: #252525;
+            --counter-bg: #333333;
+            --counter-text: #e0e0e0;
+            --btn-add-border: #444444;
+            --btn-add-hover-bg: #2d2d2d;
+            --btn-add-hover-border: #666666;
+            --shadow: 0 1px 3px rgba(0,0,0,0.3);
+            --checkbox-border: #666666;
+            --success-color: #34d399;
+            --success-hover: #10b981;
+            --disabled-bg: #2a2a2a;
+            --disabled-text: #555555;
+            --error-color: #f87171;
+            --overlay-bg: rgba(0, 0, 0, 0.65);
+            --modal-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            --toast-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            padding-bottom: 40px;
+        }
+
+        /* 頂部標題區 */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .header-text h1 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .header-text p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .task-counter {
+            background-color: var(--counter-bg);
+            color: var(--counter-text);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* 主題切換按鈕 */
+        .btn-theme-toggle {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .btn-theme-toggle:hover { transform: scale(1.05); }
+        .btn-theme-toggle svg { width: 20px; height: 20px; }
+        .icon-moon { display: none; }
+        [data-theme="dark"] .icon-sun { display: none; }
+        [data-theme="dark"] .icon-moon { display: block; }
+
+        /* 任務卡片 */
+        .task-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+            transition: opacity 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .task-card.is-completed { opacity: 0.6; }
+
+        /* 驗證失敗的紅框提示 */
+        .task-card.has-error {
+            border-color: var(--error-color);
+            box-shadow: 0 0 0 1px var(--error-color);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .task-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* 自訂勾選框樣式 */
+        .task-checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .task-checkbox-wrapper input[type="checkbox"]:disabled {
+            cursor: not-allowed;
+        }
+        .task-checkbox-wrapper input[type="checkbox"]:disabled ~ .custom-checkbox {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background-color: var(--readonly-bg);
+        }
+
+        .task-checkbox-wrapper input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            height: 0;
+            width: 0;
+        }
+
+        .custom-checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--checkbox-border);
+            border-radius: 6px;
+            background-color: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .custom-checkbox svg {
+            width: 14px;
+            height: 14px;
+            stroke: #ffffff;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all 0.2s ease;
+        }
+
+        .task-checkbox-wrapper input:checked ~ .custom-checkbox {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+        }
+
+        .task-checkbox-wrapper input:checked ~ .custom-checkbox svg {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .task-title {
+            font-size: 16px;
+            font-weight: bold;
+            transition: text-decoration 0.2s, color 0.2s;
+        }
+
+        .task-card.is-completed .task-title {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .btn-delete {
+            background-color: var(--danger-bg);
+            color: var(--danger-color);
+            border: none;
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+        .btn-delete:hover { opacity: 0.8; }
+
+        /* 表單網格排版 */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full-width { grid-column: 1 / -1; }
+
+        .form-row-three {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 16px;
+        }
+
+        .form-row-time {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: bold;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        input[type="text"],
+        select,
+        input[type="time"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            color: var(--text-main);
+            background-color: var(--input-bg);
+            transition: border-color 0.2s, background-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        select:focus,
+        input[type="time"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        input::placeholder { color: var(--text-muted); opacity: 0.6; }
+
+        [data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+
+        input[readonly] {
+            background-color: var(--readonly-bg);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        /* 鎖定狀態下的唯讀樣式 */
+        .task-card.locked input[type="text"],
+        .task-card.locked select,
+        .task-card.locked input[type="time"] {
+            background-color: transparent;
+            border-color: transparent;
+            padding-left: 0;
+            cursor: default;
+            pointer-events: none;
+            appearance: none;
+        }
+
+        .task-card.locked select { background-image: none; }
+        .task-card.locked .btn-delete { display: none; }
+
+        /* 底部操作區 */
+        .bottom-actions {
+            display: flex;
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        /* 新增任務按鈕 */
+        .btn-add {
+            flex: 1;
+            padding: 16px;
+            background-color: var(--card-bg);
+            border: 2px dashed var(--btn-add-border);
+            border-radius: var(--radius);
+            color: var(--text-muted);
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-add:hover {
+            background-color: var(--btn-add-hover-bg);
+            border-color: var(--btn-add-hover-border);
+            color: var(--text-main);
+        }
+
+        /* 完成規劃按鈕 */
+        .btn-finish {
+            flex: 1;
+            padding: 16px;
+            background-color: var(--success-color);
+            border: none;
+            border-radius: var(--radius);
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-finish:hover { background-color: var(--success-hover); }
+
+        /* 鎖定後的狀態列 */
+        .locked-banner {
+            display: none;
+            background-color: var(--success-color);
+            color: white;
+            padding: 12px;
+            border-radius: var(--radius);
+            text-align: center;
+            font-weight: bold;
+            margin-top: 24px;
+        }
+
+        /* ===========================
+           自訂 Toast
+           =========================== */
+        .toast-container {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            transform: translateX(-50%);
+            width: calc(100% - 32px);
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .toast {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            background-color: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--primary-color);
+            box-shadow: var(--toast-shadow);
+            font-size: 14px;
+            line-height: 1.55;
+            white-space: pre-line;
+            word-break: break-word;
+            pointer-events: auto;
+            cursor: pointer;
+            animation: toastIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .toast.toast-error { border-left-color: var(--error-color); }
+        .toast.toast-success { border-left-color: var(--success-color); }
+        .toast.toast-info { border-left-color: var(--primary-color); }
+
+        .toast.is-hiding {
+            animation: toastOut 0.25s ease forwards;
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(14px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateY(0) scale(1); }
+            to   { opacity: 0; transform: translateY(10px) scale(0.97); }
+        }
+
+        /* ===========================
+           自訂確認彈窗
+           =========================== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-color: var(--overlay-bg);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.is-open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            width: 100%;
+            max-width: 400px;
+            background-color: var(--card-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 24px;
+            box-shadow: var(--modal-shadow);
+            opacity: 0;
+            transform: translateY(14px) scale(0.96);
+            transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .modal-overlay.is-open .modal-box {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            background-color: var(--counter-bg);
+            color: var(--success-color);
+        }
+
+        .modal-icon svg {
+            width: 22px;
+            height: 22px;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+        }
+
+        .modal-title {
+            margin: 0 0 8px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .modal-message {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text-muted);
+            white-space: pre-line;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn-modal {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: background-color 0.2s, opacity 0.2s;
+        }
+
+        .btn-modal-cancel {
+            background-color: var(--readonly-bg);
+            color: var(--text-main);
+            border-color: var(--border-color);
+        }
+
+        .btn-modal-cancel:hover { opacity: 0.8; }
+
+        .btn-modal-confirm {
+            background-color: var(--success-color);
+            color: #ffffff;
+        }
+
+        .btn-modal-confirm:hover { background-color: var(--success-hover); }
+
+        .btn-modal-confirm.is-danger {
+            background-color: var(--danger-color);
+        }
+
+        .btn-modal-confirm.is-danger:hover { opacity: 0.85; }
+
+        /* 鍵盤焦點樣式 */
+        .btn-modal:focus-visible,
+        .btn-theme-toggle:focus-visible,
+        .btn-add:focus-visible,
+        .btn-finish:focus-visible,
+        .btn-delete:focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+
+        /* 響應式設計 (手機版) */
+        @media (max-width: 600px) {
+            .form-row-three,
+            .form-row-time { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 16px; }
+            .header-actions { width: 100%; justify-content: space-between; }
+            .bottom-actions { flex-direction: column; }
+            .toast-container { bottom: 16px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; animation-duration: 0.001ms !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <div class="header-text">
+                <h1>今天要完成什麼？</h1>
+                <p>每項任務安排內容、分類、時間與地點。</p>
+            </div>
+            <div class="header-actions">
+                <div class="task-counter" id="taskCounter">0 項</div>
+                <button class="btn-theme-toggle" id="themeToggle" title="切換亮暗色">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-sun">
+                        <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
+                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-moon">
+                        <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="tasksContainer"></div>
+
+        <div class="bottom-actions" id="bottomActions">
+            <button class="btn-add" id="addTaskBtn">
+                <span>＋</span> 新增任務
+            </button>
+            <button class="btn-finish" id="finishDayBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 6 9 17l-5-5"/>
+                </svg>
+                完成今日規劃
+            </button>
+        </div>
+
+        <div class="locked-banner" id="lockedBanner">
+            🎉 今日規劃已完成並鎖定！明天將自動刷新。
+        </div>
+    </div>
+
+    <!-- Toast 容器 -->
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- 自訂確認彈窗 -->
+    <div class="modal-overlay" id="confirmModal" aria-hidden="true">
+        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage">
+            <div class="modal-icon" id="modalIcon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M9 12l2 2 4-4"/>
+                    <circle cx="12" cy="12" r="9"/>
+                </svg>
+            </div>
+            <h2 class="modal-title" id="modalTitle">確認</h2>
+            <p class="modal-message" id="modalMessage"></p>
+            <div class="modal-actions">
+                <button type="button" class="btn-modal btn-modal-cancel" id="modalCancel">取消</button>
+                <button type="button" class="btn-modal btn-modal-confirm" id="modalConfirm">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        /* --- 常數與狀態 --- */
+        const CATEGORIES = ['工作', '學習', '生活', '運動', '娛樂'];
+        const LOCATIONS = ['家', '公司', '學校', '圖書館', '咖啡廳', '戶外'];
+        const STORAGE_KEY = 'dailyPlannerData';
+
+        // DOM 元素
+        const tasksContainer = document.getElementById('tasksContainer');
+        const addTaskBtn = document.getElementById('addTaskBtn');
+        const taskCounter = document.getElementById('taskCounter');
+        const themeToggleBtn = document.getElementById('themeToggle');
+        const finishDayBtn = document.getElementById('finishDayBtn');
+        const lockedBanner = document.getElementById('lockedBanner');
+
+        let appData = { date: '', isLocked: false, tasks: [] };
+
+        /* =========================================================
+           自訂 UI：Toast 與確認彈窗（取代原生 alert / confirm）
+           ========================================================= */
+
+        /* ---------- Toast ---------- */
+        const toastContainer = document.getElementById('toastContainer');
+
+        /**
+         * 顯示一則浮動通知
+         * @param {string} message 訊息內容（支援 \n 換行）
+         * @param {'info'|'success'|'error'} type 類型
+         * @param {number} duration 顯示毫秒數
+         */
+        const showToast = (message, type = 'info', duration = 3600) => {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+
+            let removed = false;
+            const remove = () => {
+                if (removed) return;
+                removed = true;
+                toast.classList.add('is-hiding');
+                toast.addEventListener('animationend', () => toast.remove(), { once: true });
+                // 保險：若動畫未觸發也要移除
+                setTimeout(() => toast.remove(), 400);
+            };
+
+            toast.addEventListener('click', remove);
+            const timer = setTimeout(remove, duration);
+
+            // 滑鼠移入時暫停計時
+            toast.addEventListener('mouseenter', () => clearTimeout(timer));
+            toast.addEventListener('mouseleave', () => setTimeout(remove, 1200));
+
+            return remove;
+        };
+
+        /* ---------- 確認彈窗 ---------- */
+        const modalOverlay = document.getElementById('confirmModal');
+        const modalIcon = document.getElementById('modalIcon');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalCancelBtn = document.getElementById('modalCancel');
+        const modalConfirmBtn = document.getElementById('modalConfirm');
+
+        let modalResolve = null;
+        let lastFocusedEl = null;
+
+        const ICON_CONFIRM = '<svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>';
+        const ICON_WARN = '<svg viewBox="0 0 24 24"><path d="M12 9v4"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>';
+
+        const resolveModal = (result) => {
+            if (!modalResolve) return;
+            const resolve = modalResolve;
+            modalResolve = null;
+
+            modalOverlay.classList.remove('is-open');
+            modalOverlay.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+            document.removeEventListener('keydown', handleModalKeydown);
+
+            if (lastFocusedEl && typeof lastFocusedEl.focus === 'function') {
+                lastFocusedEl.focus();
+            }
+            lastFocusedEl = null;
+
+            resolve(result);
+        };
+
+        const handleModalKeydown = (e) => {
+            if (!modalResolve) return;
+
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                resolveModal(false);
+                return;
+            }
+
+            if (e.key === 'Tab') {
+                // 焦點鎖在彈窗的兩顆按鈕之間
+                const focusables = [modalCancelBtn, modalConfirmBtn];
+                const idx = focusables.indexOf(document.activeElement);
+                e.preventDefault();
+                const nextIdx = e.shiftKey
+                    ? (idx <= 0 ? focusables.length - 1 : idx - 1)
+                    : (idx === focusables.length - 1 ? 0 : idx + 1);
+                focusables[nextIdx].focus();
+            }
+        };
+
+        /**
+         * 顯示確認彈窗，回傳 Promise<boolean>
+         * @param {object} opts
+         * @param {string} opts.title 標題
+         * @param {string} opts.message 內容
+         * @param {string} opts.confirmText 確認鈕文字
+         * @param {string} opts.cancelText 取消鈕文字
+         * @param {boolean} opts.danger 是否為危險操作（紅色確認鈕）
+         * @param {boolean} opts.warning 是否顯示警告圖示
+         */
+        const showConfirm = ({
+            title = '確認',
+            message = '',
+            confirmText = '確定',
+            cancelText = '取消',
+            danger = false,
+            warning = false
+        } = {}) => {
+            return new Promise((resolve) => {
+                // 若已有彈窗，先取消前一個
+                if (modalResolve) resolveModal(false);
+
+                modalResolve = resolve;
+                lastFocusedEl = document.activeElement;
+
+                modalTitle.textContent = title;
+                modalMessage.textContent = message;
+                modalConfirmBtn.textContent = confirmText;
+                modalCancelBtn.textContent = cancelText;
+                modalConfirmBtn.classList.toggle('is-danger', danger);
+                modalIcon.innerHTML = warning ? ICON_WARN : ICON_CONFIRM;
+                modalIcon.style.color = warning ? 'var(--error-color)' : 'var(--success-color)';
+
+                document.body.style.overflow = 'hidden';
+                modalOverlay.classList.add('is-open');
+                modalOverlay.setAttribute('aria-hidden', 'false');
+
+                document.addEventListener('keydown', handleModalKeydown);
+
+                // 等畫面更新後再設定焦點，避免瀏覽器搶回焦點
+                requestAnimationFrame(() => modalConfirmBtn.focus());
+            });
+        };
+
+        modalConfirmBtn.addEventListener('click', () => resolveModal(true));
+        modalCancelBtn.addEventListener('click', () => resolveModal(false));
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) resolveModal(false);
+        });
+
+        /* =========================================================
+           日期與資料處理
+           ========================================================= */
+        const getTodayString = () => {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+            const d = String(today.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        };
+
+        const loadData = () => {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            const todayStr = getTodayString();
+
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.date === todayStr) {
+                        appData = parsed;
+                        return;
+                    }
+                } catch (e) {
+                    console.error("解析本地資料失敗", e);
+                }
+            }
+
+            // 重置為全新的一天
+            appData = { date: todayStr, isLocked: false, tasks: [] };
+            for (let i = 0; i < 3; i++) {
+                addTaskToData();
+            }
+            saveData();
+        };
+
+        const saveData = () => {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+        };
+
+        /* --- 主題切換 --- */
+        const initTheme = () => {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        };
+
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            if (currentTheme === 'dark') {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+
+        /* --- 任務渲染 --- */
+        const generateOptions = (options, selectedValue) => {
+            return `<option value="" disabled ${!selectedValue ? 'selected' : ''}>請選擇</option>` +
+                   options.map(opt => `<option value="${opt}" ${opt === selectedValue ? 'selected' : ''}>${opt}</option>`).join('');
+        };
+
+        const createTaskHTML = (task, index) => {
+            const lockedClass = appData.isLocked ? 'locked' : '';
+            const checkedAttr = task.completed ? 'checked' : '';
+            const completedClass = task.completed ? 'is-completed' : '';
+
+            // 核心邏輯：如果還沒鎖定，勾選框要 disabled
+            const checkboxDisabled = appData.isLocked ? '' : 'disabled';
+
+            // 計算時長
+            let durationText = "系統自動計算：—";
+            if (task.start && task.end) {
+                const [sh, sm] = task.start.split(':').map(Number);
+                const [eh, em] = task.end.split(':').map(Number);
+                const diff = (eh * 60 + em) - (sh * 60 + sm);
+                if (diff > 0) durationText = `${Math.floor(diff / 60)} 小時 ${diff % 60} 分鐘`;
+                else if (diff === 0) durationText = "0 分鐘";
+                else durationText = "時間錯誤";
+            }
+
+            return `
+                <div class="task-card ${lockedClass} ${completedClass}" data-index="${index}">
+                    <div class="task-header">
+                        <div class="task-title-group">
+                            <label class="task-checkbox-wrapper" title="${appData.isLocked ? '標記完成' : '完成今日規劃後才可勾選'}">
+                                <input type="checkbox" class="task-checkbox" ${checkedAttr} ${checkboxDisabled}>
+                                <span class="custom-checkbox">
+                                    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                </span>
+                            </label>
+                            <div class="task-title">任務 ${index + 1}</div>
+                        </div>
+                        <button class="btn-delete" type="button">刪除</button>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <label>任務內容</label>
+                            <input type="text" class="task-content" placeholder="例如：完成數學學習作" value="${task.content || ''}">
+                        </div>
+
+                        <div class="form-row-three">
+                            <div class="form-group">
+                                <label>任務分類</label>
+                                <select class="task-category">
+                                    ${generateOptions(CATEGORIES, task.category)}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>地點</label>
+                                <select class="task-location">
+                                    ${generateOptions(LOCATIONS, task.location)}
+                                </select>
+                            </div>
+                            <div class="form-group"></div>
+                        </div>
+
+                        <div class="form-row-time">
+                            <div class="form-group">
+                                <label>開始時間</label>
+                                <input type="time" class="time-start" value="${task.start || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>結束時間</label>
+                                <input type="time" class="time-end" value="${task.end || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>預計時間</label>
+                                <input type="text" class="time-duration" value="${durationText}" readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderTasks = () => {
+            tasksContainer.innerHTML = '';
+            appData.tasks.forEach((task, index) => {
+                tasksContainer.insertAdjacentHTML('beforeend', createTaskHTML(task, index));
+            });
+
+            document.querySelectorAll('.task-card').forEach((card, index) => {
+                bindCardEvents(card, index);
+            });
+
+            updateCounter();
+            updateLayoutState();
+        };
+
+        const addTaskToData = () => {
+            appData.tasks.push({
+                content: '', category: '', location: '', start: '', end: '', completed: false
+            });
+        };
+
+        const bindCardEvents = (card, index) => {
+            const startInput = card.querySelector('.time-start');
+            const endInput = card.querySelector('.time-end');
+            const deleteBtn = card.querySelector('.btn-delete');
+            const checkbox = card.querySelector('.task-checkbox');
+            const contentInput = card.querySelector('.task-content');
+            const categorySelect = card.querySelector('.task-category');
+            const locationSelect = card.querySelector('.task-location');
+            const durationInput = card.querySelector('.time-duration');
+
+            if (!appData.isLocked) {
+                contentInput.addEventListener('input', (e) => {
+                    appData.tasks[index].content = e.target.value;
+                    card.classList.remove('has-error'); // 輸入時移除錯誤紅框
+                    saveData();
+                });
+                categorySelect.addEventListener('change', (e) => {
+                    appData.tasks[index].category = e.target.value;
+                    saveData();
+                });
+                locationSelect.addEventListener('change', (e) => {
+                    appData.tasks[index].location = e.target.value;
+                    saveData();
+                });
+
+                const updateDuration = () => {
+                    const startVal = startInput.value;
+                    const endVal = endInput.value;
+                    appData.tasks[index].start = startVal;
+                    appData.tasks[index].end = endVal;
+
+                    if (startVal && endVal) {
+                        const [sh, sm] = startVal.split(':').map(Number);
+                        const [eh, em] = endVal.split(':').map(Number);
+                        const diff = (eh * 60 + em) - (sh * 60 + sm);
+                        if (diff > 0) durationInput.value = `${Math.floor(diff / 60)} 小時 ${diff % 60} 分鐘`;
+                        else if (diff === 0) durationInput.value = "0 分鐘";
+                        else durationInput.value = "結束時間不可早於開始時間";
+                    } else {
+                        durationInput.value = "系統自動計算：—";
+                    }
+                    saveData();
+                };
+
+                startInput.addEventListener('input', updateDuration);
+                endInput.addEventListener('input', updateDuration);
+
+                deleteBtn.addEventListener('click', () => {
+                    appData.tasks.splice(index, 1);
+                    saveData();
+                    renderTasks();
+                });
+            }
+
+            // 勾選框 (鎖定後才可操作)
+            checkbox.addEventListener('change', (e) => {
+                appData.tasks[index].completed = e.target.checked;
+                if (e.target.checked) {
+                    card.classList.add('is-completed');
+                } else {
+                    card.classList.remove('is-completed');
+                }
+                saveData();
+            });
+        };
+
+        const updateCounter = () => {
+            taskCounter.textContent = `${appData.tasks.length} 項`;
+        };
+
+        const updateLayoutState = () => {
+            if (appData.isLocked) {
+                addTaskBtn.style.display = 'none';
+                finishDayBtn.style.display = 'none';
+                lockedBanner.style.display = 'block';
+            } else {
+                addTaskBtn.style.display = 'flex';
+                finishDayBtn.style.display = 'flex';
+                lockedBanner.style.display = 'none';
+            }
+        };
+
+        /* --- 事件監聽 --- */
+        addTaskBtn.addEventListener('click', () => {
+            addTaskToData();
+            saveData();
+            renderTasks();
+        });
+
+        finishDayBtn.addEventListener('click', async () => {
+            // 1. 驗證是否有空任務
+            let hasEmptyTask = false;
+            const cards = document.querySelectorAll('.task-card');
+
+            // 先清除所有錯誤標記
+            cards.forEach(card => card.classList.remove('has-error'));
+
+            appData.tasks.forEach((task, index) => {
+                // 判斷是否為空：內容為空字串，或所有欄位都沒填
+                const isContentEmpty = !task.content || task.content.trim() === '';
+
+                if (isContentEmpty) {
+                    hasEmptyTask = true;
+                    // 標記該張卡片為錯誤狀態
+                    if (cards[index]) cards[index].classList.add('has-error');
+                }
+            });
+
+            if (hasEmptyTask) {
+                showToast(
+                    '⚠️ 無法鎖定規劃！\n請確認所有任務都已填寫「任務內容」，或刪除不需要的空任務。',
+                    'error',
+                    4500
+                );
+                // 將畫面捲動到第一個錯誤的卡片
+                const firstError = document.querySelector('.task-card.has-error');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                return;
+            }
+
+            // 2. 驗證通過，跳出確認彈窗
+            const confirmed = await showConfirm({
+                title: '完成今日規劃',
+                message: '確定要完成今日規劃嗎？鎖定後將無法再修改任務內容、時間與新增刪除任務。',
+                confirmText: '完成並鎖定',
+                cancelText: '再想想'
+            });
+
+            if (!confirmed) return;
+
+            // 3. 執行鎖定
+            appData.isLocked = true;
+            saveData();
+            renderTasks();
+            showToast('🎉 今日規劃已鎖定，開始執行吧！', 'success', 3200);
+        });
+
+        /* --- 初始化 --- */
+        const init = () => {
+            initTheme();
+            loadData();
+            renderTasks();
+        };
+
+        init();
+    </script>
+</body>
+</html>
