@@ -67,34 +67,57 @@ body {
     background-color: var(--bg-color);
     color: var(--text-main);
     margin: 0;
-    padding: 20px;
-    display: flex;
-    justify-content: center;
     min-height: 100vh;
 }
 
-.container {
+/* ===========================
+   固定頂部導覽列 (Navbar)
+   =========================== */
+.top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 900; /* 低於 Toast (1000) 和 Modal (1100) */
+    background-color: var(--bg-color);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
     width: 100%;
-    max-width: 900px;
-    padding-bottom: 40px;
+    padding: 16px 20px;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* 頂部標題區 */
-.header {
+.nav-inner {
+    max-width: 900px;
+    margin: 0 auto;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 20px;
+    align-items: center;
 }
 
-/* 處理 Logo 與文字的排版 */
-.header-text {
+.nav-left {
     display: flex;
     align-items: center;
     gap: 16px;
 }
 
-/* 不限制大小：讓 SVG 依照自身比例顯示 */
+.nav-titles h1 {
+    margin: 0 0 4px 0;
+    font-size: 20px; /* 稍微縮小以適應導覽列 */
+    font-weight: bold;
+}
+
+.nav-titles p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Logo 尺寸與方案一濾鏡設定 */
 .header-logo {
     width: auto;
     height: auto;
@@ -102,31 +125,26 @@ body {
     max-height: 80px; 
     object-fit: contain;
     flex-shrink: 0;
-    /* 確保濾鏡切換時有平滑的過度動畫 */
     transition: filter 0.3s ease;
 }
 
-/* 暗色模式：將純黑白 Logo 顏色反轉 */
+/* ⬇️ 保留你選擇的方案一：強化版 CSS 濾鏡 ⬇️ */
 [data-theme="dark"] .header-logo {
-    filter: invert(1) hue-rotate(180deg);
+    -webkit-filter: invert(100%) hue-rotate(180deg);
+    filter: invert(100%) hue-rotate(180deg);
+    will-change: filter;
 }
+/* ⬆️ 保留你選擇的方案一：強化版 CSS 濾鏡 ⬆️ */
 
-.header-text h1 {
-    margin: 0 0 8px 0;
-    font-size: 24px;
-    font-weight: bold;
-}
-
-.header-text p {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 14px;
-}
-
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+/* ===========================
+   主要內容區域
+   =========================== */
+.container {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px; /* 補回原本的邊距 */
+    padding-bottom: 40px;
 }
 
 .task-counter {
@@ -599,10 +617,27 @@ input[readonly] {
 @media (max-width: 600px) {
     .form-row-three,
     .form-row-time { grid-template-columns: 1fr; }
-    .header { flex-direction: column; gap: 16px; }
-    .header-actions { width: 100%; justify-content: space-between; }
     .bottom-actions { flex-direction: column; }
     .toast-container { bottom: 16px; }
+    
+    /* 手機版導覽列調整 */
+    .top-nav {
+        padding: 12px 16px;
+    }
+    .nav-left {
+        gap: 12px;
+    }
+    /* 手機版隱藏副標題，節省空間 */
+    .nav-titles p {
+        display: none;
+    }
+    .nav-titles h1 {
+        font-size: 18px;
+    }
+    .container {
+        padding: 16px;
+        padding-bottom: 40px;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
