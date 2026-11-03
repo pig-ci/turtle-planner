@@ -1,6 +1,6 @@
 /* --- 常數與狀態 --- */
-const CATEGORIES = ['工作', '學習', '生活', '運動', '娛樂'];
-const LOCATIONS = ['家', '公司', '學校', '圖書館', '咖啡廳', '戶外'];
+const CATEGORIES = ['學習', '生活', '運動', '娛樂'];
+const LOCATIONS = ['家','學校', '圖書館', '咖啡廳', '戶外'];
 const STORAGE_KEY = 'dailyPlannerData';
 const HISTORY_KEY = 'dailyPlannerHistory';
 
@@ -174,10 +174,9 @@ const addDays = (dateStr, days) => {
     return formatDate(date);
 };
 
-/** 取得該日期所屬週的星期一日期字串 */
 const getWeekStart = (dateStr) => {
     const date = parseDate(dateStr);
-    const day = date.getDay(); // 0=日, 1=一, ...
+    const day = date.getDay();
     const diff = day === 0 ? -6 : 1 - day;
     date.setDate(date.getDate() + diff);
     return formatDate(date);
@@ -241,7 +240,6 @@ const saveHistory = (history) => {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 };
 
-/** 將目前這一天（已鎖定）的快照同步至歷史紀錄 */
 const syncCurrentDayToHistory = () => {
     if (!appData.isLocked) return;
     if (!appData.tasks || appData.tasks.length === 0) return;
@@ -385,18 +383,23 @@ const bindCardEvents = (card, index) => {
     const locationSelect = card.querySelector('.task-location');
     const durationInput = card.querySelector('.time-duration');
 
+    // 任何欄位變更時，即時清除該卡片的錯誤標記
+    const clearError = () => card.classList.remove('has-error');
+
     if (!appData.isLocked) {
         contentInput.addEventListener('input', (e) => {
             appData.tasks[index].content = e.target.value;
-            card.classList.remove('has-error');
+            clearError();
             saveData();
         });
         categorySelect.addEventListener('change', (e) => {
             appData.tasks[index].category = e.target.value;
+            clearError();
             saveData();
         });
         locationSelect.addEventListener('change', (e) => {
             appData.tasks[index].location = e.target.value;
+            clearError();
             saveData();
         });
 
@@ -405,6 +408,7 @@ const bindCardEvents = (card, index) => {
             const endVal = endInput.value;
             appData.tasks[index].start = startVal;
             appData.tasks[index].end = endVal;
+            clearError();
 
             if (startVal && endVal) {
                 const [sh, sm] = startVal.split(':').map(Number);
@@ -429,7 +433,6 @@ const bindCardEvents = (card, index) => {
         });
     }
 
-    // 勾選框（鎖定後才可操作）
     checkbox.addEventListener('change', (e) => {
         appData.tasks[index].completed = e.target.checked;
         if (e.target.checked) {
@@ -438,7 +441,6 @@ const bindCardEvents = (card, index) => {
             card.classList.remove('is-completed');
         }
         saveData();
-        // 同步歷史紀錄（讓後台完成率保持即時）
         syncCurrentDayToHistory();
     });
 };
@@ -462,8 +464,6 @@ const updateLayoutState = () => {
 /* =========================================================
    後台統計
    ========================================================= */
-
-/** 計算某段區間（含）的完成率 */
 const getStatsForRange = (history, startStr, endStr) => {
     let completed = 0;
     let total = 0;
@@ -487,7 +487,6 @@ const getStatsForRange = (history, startStr, endStr) => {
     };
 };
 
-/** 統計某天各分類的時長（分鐘） */
 const getCategoryDurations = (tasks) => {
     const result = {};
     (tasks || []).forEach((t) => {
@@ -560,20 +559,16 @@ const renderAdmin = () => {
     const history = loadHistory();
     const todayStr = getTodayString();
 
-    // ── 週 ──
     const weekStart = getWeekStart(todayStr);
     const weekEnd = addDays(weekStart, 6);
     setOverviewCard('week', getStatsForRange(history, weekStart, weekEnd));
 
-    // ── 月 ──
     const ym = todayStr.slice(0, 7);
     setOverviewCard('month', getStatsForRange(history, `${ym}-01`, `${ym}-31`));
 
-    // ── 年 ──
     const y = todayStr.slice(0, 4);
     setOverviewCard('year', getStatsForRange(history, `${y}-01-01`, `${y}-12-31`));
 
-    // ── 每日記錄（新到舊） ──
     const days = Object.values(history)
         .filter((d) => d && d.date && Array.isArray(d.tasks) && d.tasks.length > 0)
         .sort((a, b) => b.date.localeCompare(a.date));
@@ -611,24 +606,55 @@ addTaskBtn.addEventListener('click', () => {
 });
 
 finishDayBtn.addEventListener('click', async () => {
-    let hasEmptyTask = false;
     const cards = document.querySelectorAll('.task-card');
+    const emptyTasks = [];       // 完全空白的任務（建議刪除）
+    const incompleteTasks = [];  // 有填東西但缺少必填欄位
 
+    // 先清除所有錯誤標記
     cards.forEach(card => card.classList.remove('has-error'));
 
     appData.tasks.forEach((task, index) => {
-        const isContentEmpty = !task.content || task.content.trim() === '';
-        if (isContentEmpty) {
-            hasEmptyTask = true;
+        const contentEmpty = !task.content || task.content.trim() === '';
+        const isCompletelyEmpty =
+            contentEmpty &&
+            !task.category &&
+            !task.location &&
+            !task.start &&
+            !task.end;
+
+        // 1) 完全空白 → 視為空任務
+        if (isCompletelyEmpty) {
+            emptyTasks.push(`任務 ${index + 1}`);
+            if (cards[index]) cards[index].classList.add('has-error');
+            return;
+        }
+
+        // 2) 有填東西 → 逐一檢查所有必填欄位
+        const missing = [];
+        if (contentEmpty) missing.push('任務內容');
+        if (!task.category) missing.push('任務分類');
+        if (!task.location) missing.push('地點');
+        if (!task.start) missing.push('開始時間');
+        if (!task.end) missing.push('結束時間');
+
+        if (missing.length > 0) {
+            incompleteTasks.push(`任務 ${index + 1}：缺少「${missing.join('、')}」`);
             if (cards[index]) cards[index].classList.add('has-error');
         }
     });
 
-    if (hasEmptyTask) {
+    if (emptyTasks.length > 0 || incompleteTasks.length > 0) {
+        const messages = [];
+        if (emptyTasks.length > 0) {
+            messages.push(`以下任務為空白，請填寫或刪除：\n${emptyTasks.join('、')}`);
+        }
+        if (incompleteTasks.length > 0) {
+            messages.push(`以下任務缺少必填欄位：\n${incompleteTasks.join('\n')}`);
+        }
         showToast(
-            '⚠️ 無法鎖定規劃！\n請確認所有任務都已填寫「任務內容」，或刪除不需要的空任務。',
+            `⚠️ 無法鎖定規劃！\n\n${messages.join('\n\n')}`,
             'error',
-            4500
+            5500
         );
         const firstError = document.querySelector('.task-card.has-error');
         if (firstError) {
@@ -648,7 +674,6 @@ finishDayBtn.addEventListener('click', async () => {
 
     appData.isLocked = true;
     saveData();
-    // 同步歷史紀錄（供後台統計使用）
     syncCurrentDayToHistory();
     renderTasks();
     showToast('🎉 今日規劃已鎖定，開始執行吧！', 'success', 3200);
@@ -658,7 +683,6 @@ finishDayBtn.addEventListener('click', async () => {
 const init = () => {
     initTheme();
     loadData();
-    // 若今日已鎖定（例如重新整理頁面），同步一次歷史紀錄
     if (appData.isLocked) {
         syncCurrentDayToHistory();
     }
