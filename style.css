@@ -76,7 +76,7 @@ body {
 .top-nav {
     position: sticky;
     top: 0;
-    z-index: 900; /* 低於 Toast (1000) 和 Modal (1100) */
+    z-index: 900;
     background-color: var(--bg-color);
     border-bottom: 1px solid var(--border-color);
     box-shadow: var(--shadow);
@@ -101,7 +101,7 @@ body {
 
 .nav-titles h1 {
     margin: 0 0 4px 0;
-    font-size: 20px; /* 稍微縮小以適應導覽列 */
+    font-size: 20px;
     font-weight: bold;
 }
 
@@ -117,24 +117,21 @@ body {
     gap: 12px;
 }
 
-/* Logo 尺寸與方案一濾鏡設定 */
 .header-logo {
     width: auto;
     height: auto;
-    max-width: 150px; 
-    max-height: 80px; 
+    max-width: 150px;
+    max-height: 80px;
     object-fit: contain;
     flex-shrink: 0;
     transition: filter 0.3s ease;
 }
 
-/* ⬇️ 保留你選擇的方案一：強化版 CSS 濾鏡 ⬇️ */
 [data-theme="dark"] .header-logo {
     -webkit-filter: invert(100%) hue-rotate(180deg);
     filter: invert(100%) hue-rotate(180deg);
     will-change: filter;
 }
-/* ⬆️ 保留你選擇的方案一：強化版 CSS 濾鏡 ⬆️ */
 
 /* ===========================
    主要內容區域
@@ -143,9 +140,11 @@ body {
     width: 100%;
     max-width: 900px;
     margin: 0 auto;
-    padding: 20px; /* 補回原本的邊距 */
+    padding: 20px;
     padding-bottom: 40px;
 }
+
+.container[hidden] { display: none !important; }
 
 .task-counter {
     background-color: var(--counter-bg);
@@ -178,6 +177,24 @@ body {
 [data-theme="dark"] .icon-sun { display: none; }
 [data-theme="dark"] .icon-moon { display: block; }
 
+/* 後台按鈕（與主題切換同款） */
+.btn-admin {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: background-color 0.3s, transform 0.2s;
+}
+.btn-admin:hover { transform: scale(1.05); }
+.btn-admin svg { width: 20px; height: 20px; }
+
 /* 任務卡片 */
 .task-card {
     background-color: var(--card-bg);
@@ -191,7 +208,6 @@ body {
 
 .task-card.is-completed { opacity: 0.6; }
 
-/* 驗證失敗的紅框提示 */
 .task-card.has-error {
     border-color: var(--error-color);
     box-shadow: 0 0 0 1px var(--error-color);
@@ -210,7 +226,6 @@ body {
     gap: 12px;
 }
 
-/* 自訂勾選框樣式 */
 .task-checkbox-wrapper {
     display: flex;
     align-items: center;
@@ -218,9 +233,7 @@ body {
     cursor: pointer;
 }
 
-.task-checkbox-wrapper input[type="checkbox"]:disabled {
-    cursor: not-allowed;
-}
+.task-checkbox-wrapper input[type="checkbox"]:disabled { cursor: not-allowed; }
 .task-checkbox-wrapper input[type="checkbox"]:disabled ~ .custom-checkbox {
     opacity: 0.4;
     cursor: not-allowed;
@@ -356,7 +369,6 @@ input[readonly] {
     cursor: not-allowed;
 }
 
-/* 鎖定狀態下的唯讀樣式 */
 .task-card.locked input[type="text"],
 .task-card.locked select,
 .task-card.locked input[type="time"] {
@@ -378,7 +390,6 @@ input[readonly] {
     margin-top: 24px;
 }
 
-/* 新增任務按鈕 */
 .btn-add {
     flex: 1;
     padding: 16px;
@@ -402,7 +413,6 @@ input[readonly] {
     color: var(--text-main);
 }
 
-/* 完成規劃按鈕 */
 .btn-finish {
     flex: 1;
     padding: 16px;
@@ -422,7 +432,6 @@ input[readonly] {
 
 .btn-finish:hover { background-color: var(--success-hover); }
 
-/* 鎖定後的狀態列 */
 .locked-banner {
     display: none;
     background-color: var(--success-color);
@@ -432,6 +441,176 @@ input[readonly] {
     text-align: center;
     font-weight: bold;
     margin-top: 24px;
+}
+
+/* ===========================
+   後台 / 統計面板
+   =========================== */
+.admin-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 12px;
+}
+
+.admin-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.btn-back {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+}
+.btn-back:hover { background-color: var(--btn-add-hover-bg); }
+
+.admin-section {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+}
+
+.admin-section-title {
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--text-main);
+}
+
+.overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.overview-card {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px 12px;
+    text-align: center;
+}
+
+.overview-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.overview-value {
+    font-size: 26px;
+    font-weight: bold;
+    color: var(--success-color);
+    line-height: 1.1;
+}
+
+.overview-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+
+/* 每日記錄 */
+.daily-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.day-record {
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 14px;
+}
+
+.day-record-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.day-date {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.day-rate {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--success-color);
+    white-space: nowrap;
+}
+
+.day-rate-sub {
+    color: var(--text-muted);
+    font-weight: normal;
+    font-size: 12px;
+}
+
+/* 分類長條圖 */
+.category-bar {
+    display: flex;
+    width: 100%;
+    height: 28px;
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: var(--border-color);
+}
+
+.cat-segment {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: bold;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: width 0.3s ease;
+    min-width: 0;
+}
+
+.cat-segment-label {
+    padding: 0 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+}
+
+.category-bar-empty {
+    font-size: 13px;
+    color: var(--text-muted);
+    padding: 8px 0;
+    text-align: center;
+    background-color: var(--readonly-bg);
+    border-radius: 6px;
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 30px 20px;
+    font-size: 14px;
 }
 
 /* ===========================
@@ -603,9 +782,10 @@ input[readonly] {
 
 .btn-modal-confirm.is-danger:hover { opacity: 0.85; }
 
-/* 鍵盤焦點樣式 */
 .btn-modal:focus-visible,
 .btn-theme-toggle:focus-visible,
+.btn-admin:focus-visible,
+.btn-back:focus-visible,
 .btn-add:focus-visible,
 .btn-finish:focus-visible,
 .btn-delete:focus-visible {
@@ -619,25 +799,19 @@ input[readonly] {
     .form-row-time { grid-template-columns: 1fr; }
     .bottom-actions { flex-direction: column; }
     .toast-container { bottom: 16px; }
-    
-    /* 手機版導覽列調整 */
-    .top-nav {
-        padding: 12px 16px;
-    }
-    .nav-left {
-        gap: 12px;
-    }
-    /* 手機版隱藏副標題，節省空間 */
-    .nav-titles p {
-        display: none;
-    }
-    .nav-titles h1 {
-        font-size: 18px;
-    }
+
+    .top-nav { padding: 12px 16px; }
+    .nav-left { gap: 12px; }
+    .nav-titles p { display: none; }
+    .nav-titles h1 { font-size: 18px; }
     .container {
         padding: 16px;
         padding-bottom: 40px;
     }
+    .overview-grid { grid-template-columns: 1fr; }
+    .overview-value { font-size: 22px; }
+    .admin-section { padding: 16px; }
+    .admin-title { font-size: 18px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

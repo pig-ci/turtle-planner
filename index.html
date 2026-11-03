@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>今天要完成什麼？</title>
-    <!-- 網站圖標 -->
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -14,7 +13,6 @@
     <nav class="top-nav">
         <div class="nav-inner">
             <div class="nav-left">
-                <!-- Logo 圖片 -->
                 <img src="navicon.svg" alt="Logo" class="header-logo">
                 <div class="nav-titles">
                     <h1>今天要完成什麼？</h1>
@@ -23,6 +21,14 @@
             </div>
             <div class="nav-right">
                 <div class="task-counter" id="taskCounter">0 項</div>
+                <button class="btn-admin" id="adminBtn" title="統計後台" aria-label="統計後台">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3v18h18"/>
+                        <path d="M7 14v4"/>
+                        <path d="M12 10v8"/>
+                        <path d="M17 6v12"/>
+                    </svg>
+                </button>
                 <button class="btn-theme-toggle" id="themeToggle" title="切換亮暗色">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-sun">
                         <circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>
@@ -35,8 +41,8 @@
         </div>
     </nav>
 
-    <!-- 主要內容區域 -->
-    <div class="container">
+    <!-- ===================== 主畫面 ===================== -->
+    <div class="container" id="mainView">
         <div id="tasksContainer"></div>
 
         <div class="bottom-actions" id="bottomActions">
@@ -54,6 +60,40 @@
         <div class="locked-banner" id="lockedBanner">
             🎉 今日規劃已完成並鎖定！明天將自動刷新。
         </div>
+    </div>
+
+    <!-- ===================== 後台畫面 ===================== -->
+    <div class="container" id="adminView" hidden>
+        <div class="admin-top">
+            <h2 class="admin-title">📊 統計後台</h2>
+            <button class="btn-back" id="backBtn">← 返回</button>
+        </div>
+
+        <section class="admin-section">
+            <h3 class="admin-section-title">完成率總覽</h3>
+            <div class="overview-grid">
+                <div class="overview-card">
+                    <div class="overview-label">本週</div>
+                    <div class="overview-value" id="weekRate">—</div>
+                    <div class="overview-sub" id="weekCount">暫無數據</div>
+                </div>
+                <div class="overview-card">
+                    <div class="overview-label">本月</div>
+                    <div class="overview-value" id="monthRate">—</div>
+                    <div class="overview-sub" id="monthCount">暫無數據</div>
+                </div>
+                <div class="overview-card">
+                    <div class="overview-label">本年</div>
+                    <div class="overview-value" id="yearRate">—</div>
+                    <div class="overview-sub" id="yearCount">暫無數據</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-section">
+            <h3 class="admin-section-title">每日記錄（分類時長）</h3>
+            <div id="dailyList" class="daily-list"></div>
+        </section>
     </div>
 
     <!-- Toast 容器 -->
