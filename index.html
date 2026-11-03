@@ -43,6 +43,11 @@
 
     <!-- ===================== 主畫面 ===================== -->
     <div class="container" id="mainView">
+        <!-- 日期切換列（今天 + 未來 7 天） -->
+        <div class="date-selector">
+            <div class="date-tabs" id="dateTabs"></div>
+        </div>
+
         <div id="tasksContainer"></div>
 
         <div class="bottom-actions" id="bottomActions">
@@ -70,7 +75,7 @@
         </div>
 
         <section class="admin-section">
-            <h3 class="admin-section-title">完成率總覽</h3>
+            <h3 class="admin-section-title">完成率總覽（統計至今天）</h3>
             <div class="overview-grid">
                 <div class="overview-card">
                     <div class="overview-label">本週</div>

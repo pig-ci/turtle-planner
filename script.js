@@ -1,12 +1,14 @@
-/* --- 常數與狀態 --- */
+/* --- 常數 --- */
 const CATEGORIES = ['學習', '生活', '運動', '娛樂'];
-const LOCATIONS = ['家','學校', '圖書館', '咖啡廳', '戶外'];
-const STORAGE_KEY = 'dailyPlannerData';
-const HISTORY_KEY = 'dailyPlannerHistory';
+const LOCATIONS = ['家', '學校', '圖書館', '咖啡廳', '戶外'];
+
+const PLANNER_KEY = 'dailyPlannerMultiData'; // 多日規劃資料
+const HISTORY_KEY = 'dailyPlannerHistory';   // 歷史（已鎖定的每日快照）
+const LEGACY_KEY = 'dailyPlannerData';       // 舊版單日資料（用於遷移）
+const PREPLAN_DAYS = 7;                      // 今天 + 未來 7 天 = 8 天可選
 
 // 分類顏色（用於後台長條圖）
 const CATEGORY_COLORS = {
-    '工作': '#3b82f6',
     '學習': '#10b981',
     '生活': '#f59e0b',
     '運動': '#ef4444',
@@ -14,13 +16,82 @@ const CATEGORY_COLORS = {
 };
 const DEFAULT_CATEGORY_COLOR = '#94a3b8';
 
-// DOM 元素
+/* =========================================================
+   日期工具
+   ========================================================= */
+const formatDate = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
+const getTodayString = () => formatDate(new Date());
+
+const parseDate = (dateStr) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+};
+
+const addDays = (dateStr, days) => {
+    const date = parseDate(dateStr);
+    date.setDate(date.getDate() + days);
+    return formatDate(date);
+};
+
+const getWeekStart = (dateStr) => {
+    const date = parseDate(dateStr);
+    const day = date.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    date.setDate(date.getDate() + diff);
+    return formatDate(date);
+};
+
+const formatDateDisplay = (dateStr) => {
+    const date = parseDate(dateStr);
+    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 (週${weekdays[date.getDay()]})`;
+};
+
+const formatMinutes = (mins) => {
+    if (mins < 60) return `${mins}min`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m === 0 ? `${h}h` : `${h}h${m}min`;
+};
+
+const getWeekdayShort = (dateStr) => {
+    return ['日', '一', '二', '三', '四', '五', '六'][parseDate(dateStr).getDay()];
+};
+
+/** 日期標籤文字（今天 / 明天 / 週X） */
+const getDateLabel = (dateStr) => {
+    const today = getTodayString();
+    if (dateStr === today) return '今天';
+    if (dateStr === addDays(today, 1)) return '明天';
+    return `週${getWeekdayShort(dateStr)}`;
+};
+
+/** 可選日期列表：今天 + 未來 PREPLAN_DAYS 天 */
+const getSelectableDates = () => {
+    const today = getTodayString();
+    const arr = [];
+    for (let i = 0; i <= PREPLAN_DAYS; i++) {
+        arr.push(addDays(today, i));
+    }
+    return arr;
+};
+
+/* =========================================================
+   DOM 元素
+   ========================================================= */
 const tasksContainer = document.getElementById('tasksContainer');
 const addTaskBtn = document.getElementById('addTaskBtn');
 const taskCounter = document.getElementById('taskCounter');
 const themeToggleBtn = document.getElementById('themeToggle');
 const finishDayBtn = document.getElementById('finishDayBtn');
 const lockedBanner = document.getElementById('lockedBanner');
+const dateTabs = document.getElementById('dateTabs');
 
 const mainView = document.getElementById('mainView');
 const adminView = document.getElementById('adminView');
@@ -28,13 +99,18 @@ const adminBtn = document.getElementById('adminBtn');
 const backBtn = document.getElementById('backBtn');
 const dailyList = document.getElementById('dailyList');
 
-let appData = { date: '', isLocked: false, tasks: [] };
+/* =========================================================
+   狀態
+   plannerData = { 'YYYY-MM-DD': { isLocked: bool, tasks: [...] } }
+   appData  = plannerData[currentDate]（引用，修改即同步）
+   ========================================================= */
+let plannerData = {};
+let currentDate = getTodayString();
+let appData = { isLocked: false, tasks: [] };
 
 /* =========================================================
-   自訂 UI：Toast 與確認彈窗
+   Toast
    ========================================================= */
-
-/* ---------- Toast ---------- */
 const toastContainer = document.getElementById('toastContainer');
 
 const showToast = (message, type = 'info', duration = 3600) => {
@@ -54,14 +130,15 @@ const showToast = (message, type = 'info', duration = 3600) => {
 
     toast.addEventListener('click', remove);
     const timer = setTimeout(remove, duration);
-
     toast.addEventListener('mouseenter', () => clearTimeout(timer));
     toast.addEventListener('mouseleave', () => setTimeout(remove, 1200));
 
     return remove;
 };
 
-/* ---------- 確認彈窗 ---------- */
+/* =========================================================
+   確認彈窗
+   ========================================================= */
 const modalOverlay = document.getElementById('confirmModal');
 const modalIcon = document.getElementById('modalIcon');
 const modalTitle = document.getElementById('modalTitle');
@@ -138,7 +215,6 @@ const showConfirm = ({
         document.body.style.overflow = 'hidden';
         modalOverlay.classList.add('is-open');
         modalOverlay.setAttribute('aria-hidden', 'false');
-
         document.addEventListener('keydown', handleModalKeydown);
 
         requestAnimationFrame(() => modalConfirmBtn.focus());
@@ -152,77 +228,10 @@ modalOverlay.addEventListener('click', (e) => {
 });
 
 /* =========================================================
-   日期工具
+   資料存取
    ========================================================= */
-const formatDate = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-};
-
-const getTodayString = () => formatDate(new Date());
-
-const parseDate = (dateStr) => {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    return new Date(y, m - 1, d);
-};
-
-const addDays = (dateStr, days) => {
-    const date = parseDate(dateStr);
-    date.setDate(date.getDate() + days);
-    return formatDate(date);
-};
-
-const getWeekStart = (dateStr) => {
-    const date = parseDate(dateStr);
-    const day = date.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    date.setDate(date.getDate() + diff);
-    return formatDate(date);
-};
-
-const formatDateDisplay = (dateStr) => {
-    const date = parseDate(dateStr);
-    const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
-    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 (週${weekdays[date.getDay()]})`;
-};
-
-const formatMinutes = (mins) => {
-    if (mins < 60) return `${mins}min`;
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return m === 0 ? `${h}h` : `${h}h${m}min`;
-};
-
-/* =========================================================
-   資料存取（當日 + 歷史）
-   ========================================================= */
-const loadData = () => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const todayStr = getTodayString();
-
-    if (saved) {
-        try {
-            const parsed = JSON.parse(saved);
-            if (parsed.date === todayStr) {
-                appData = parsed;
-                return;
-            }
-        } catch (e) {
-            console.error("解析本地資料失敗", e);
-        }
-    }
-
-    appData = { date: todayStr, isLocked: false, tasks: [] };
-    for (let i = 0; i < 3; i++) {
-        addTaskToData();
-    }
-    saveData();
-};
-
 const saveData = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    localStorage.setItem(PLANNER_KEY, JSON.stringify(plannerData));
 };
 
 const loadHistory = () => {
@@ -231,7 +240,7 @@ const loadHistory = () => {
     try {
         return JSON.parse(saved) || {};
     } catch (e) {
-        console.error("解析歷史資料失敗", e);
+        console.error('解析歷史資料失敗', e);
         return {};
     }
 };
@@ -240,20 +249,95 @@ const saveHistory = (history) => {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 };
 
+const createEmptyTasks = (count) => {
+    const tasks = [];
+    for (let i = 0; i < count; i++) {
+        tasks.push({ content: '', category: '', location: '', start: '', end: '', completed: false });
+    }
+    return tasks;
+};
+
+/** 頁面載入時整理資料 */
+const loadPlanner = () => {
+    const todayStr = getTodayString();
+    const saved = localStorage.getItem(PLANNER_KEY);
+
+    if (saved) {
+        try {
+            plannerData = JSON.parse(saved) || {};
+        } catch (e) {
+            console.error('解析規劃資料失敗', e);
+            plannerData = {};
+        }
+    }
+
+    // 舊版資料遷移（只在今天沒有資料時）
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+        try {
+            const parsed = JSON.parse(legacy);
+            if (parsed && parsed.date === todayStr && !plannerData[todayStr]) {
+                plannerData[todayStr] = {
+                    isLocked: !!parsed.isLocked,
+                    tasks: Array.isArray(parsed.tasks) ? parsed.tasks : []
+                };
+            }
+            localStorage.removeItem(LEGACY_KEY);
+        } catch (e) {
+            console.error('遷移舊資料失敗', e);
+        }
+    }
+
+    // 清除過期日期（< 今天）
+    Object.keys(plannerData).forEach((d) => {
+        if (d < todayStr) delete plannerData[d];
+    });
+
+    // 確保今天有資料（首次進入今天會建立 3 個空任務）
+    if (!plannerData[todayStr]) {
+        plannerData[todayStr] = { isLocked: false, tasks: createEmptyTasks(3) };
+    }
+
+    saveData();
+};
+
+/** 切換到某日，設定 appData 引用 */
+const loadDayData = (date) => {
+    if (!plannerData[date]) {
+        plannerData[date] = { isLocked: false, tasks: createEmptyTasks(3) };
+        saveData();
+    }
+    if (!Array.isArray(plannerData[date].tasks)) {
+        plannerData[date].tasks = [];
+    }
+    appData = plannerData[date];
+};
+
+/** 把目前檢視日期的鎖定快照寫入歷史 */
 const syncCurrentDayToHistory = () => {
     if (!appData.isLocked) return;
     if (!appData.tasks || appData.tasks.length === 0) return;
 
     const history = loadHistory();
-    history[appData.date] = {
-        date: appData.date,
-        tasks: appData.tasks.map((t) => ({ ...t })),
-        lockedAt: (history[appData.date] && history[appData.date].lockedAt) || Date.now()
+    const date = currentDate;
+    history[date] = {
+        date,
+        tasks: appData.tasks.map((t) => ({
+            content: t.content,
+            category: t.category,
+            location: t.location,
+            start: t.start,
+            end: t.end,
+            completed: !!t.completed
+        })),
+        lockedAt: (history[date] && history[date].lockedAt) || Date.now()
     };
     saveHistory(history);
 };
 
-/* --- 主題切換 --- */
+/* =========================================================
+   主題切換
+   ========================================================= */
 const initTheme = () => {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -274,11 +358,61 @@ themeToggleBtn.addEventListener('click', () => {
 });
 
 /* =========================================================
+   日期切換列
+   ========================================================= */
+let hasAutoScrolledTabs = false;
+
+const renderDateTabs = () => {
+    const today = getTodayString();
+    const dates = getSelectableDates();
+
+    dateTabs.innerHTML = dates.map((d) => {
+        const isActive = d === currentDate;
+        const isLocked = !!(plannerData[d] && plannerData[d].isLocked);
+        const dateObj = parseDate(d);
+        const num = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
+        const classes = ['date-tab'];
+        if (isActive) classes.push('active');
+        return `<button class="${classes.join(' ')}" data-date="${d}" type="button">
+            <span class="date-tab-label">${getDateLabel(d)}</span>
+            <span class="date-tab-num">${num}</span>
+            ${isLocked ? '<span class="date-tab-dot" title="已鎖定"></span>' : ''}
+        </button>`;
+    }).join('');
+
+    // 首次渲染時把 active 的日期標籤自動滾到中間
+    if (!hasAutoScrolledTabs) {
+        const active = dateTabs.querySelector('.date-tab.active');
+        if (active) {
+            dateTabs.scrollLeft =
+                active.offsetLeft - dateTabs.clientWidth / 2 + active.clientWidth / 2;
+        }
+        hasAutoScrolledTabs = true;
+    }
+};
+
+dateTabs.addEventListener('click', (e) => {
+    const tab = e.target.closest('.date-tab');
+    if (!tab) return;
+    const newDate = tab.dataset.date;
+    if (!newDate || newDate === currentDate) return;
+    switchDate(newDate);
+});
+
+const switchDate = (newDate) => {
+    currentDate = newDate;
+    loadDayData(newDate);
+    renderDateTabs();
+    renderTasks();
+    window.scrollTo({ top: 0, behavior: 'auto' });
+};
+
+/* =========================================================
    任務渲染
    ========================================================= */
 const generateOptions = (options, selectedValue) => {
     return `<option value="" disabled ${!selectedValue ? 'selected' : ''}>請選擇</option>` +
-           options.map(opt => `<option value="${opt}" ${opt === selectedValue ? 'selected' : ''}>${opt}</option>`).join('');
+        options.map((opt) => `<option value="${opt}" ${opt === selectedValue ? 'selected' : ''}>${opt}</option>`).join('');
 };
 
 const createTaskHTML = (task, index) => {
@@ -287,21 +421,21 @@ const createTaskHTML = (task, index) => {
     const completedClass = task.completed ? 'is-completed' : '';
     const checkboxDisabled = appData.isLocked ? '' : 'disabled';
 
-    let durationText = "系統自動計算：—";
+    let durationText = '系統自動計算：—';
     if (task.start && task.end) {
         const [sh, sm] = task.start.split(':').map(Number);
         const [eh, em] = task.end.split(':').map(Number);
         const diff = (eh * 60 + em) - (sh * 60 + sm);
         if (diff > 0) durationText = `${Math.floor(diff / 60)} 小時 ${diff % 60} 分鐘`;
-        else if (diff === 0) durationText = "0 分鐘";
-        else durationText = "時間錯誤";
+        else if (diff === 0) durationText = '0 分鐘';
+        else durationText = '時間錯誤';
     }
 
     return `
         <div class="task-card ${lockedClass} ${completedClass}" data-index="${index}">
             <div class="task-header">
                 <div class="task-title-group">
-                    <label class="task-checkbox-wrapper" title="${appData.isLocked ? '標記完成' : '完成今日規劃後才可勾選'}">
+                    <label class="task-checkbox-wrapper" title="${appData.isLocked ? '標記完成' : '完成當日規劃後才可勾選'}">
                         <input type="checkbox" class="task-checkbox" ${checkedAttr} ${checkboxDisabled}>
                         <span class="custom-checkbox">
                             <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -383,7 +517,6 @@ const bindCardEvents = (card, index) => {
     const locationSelect = card.querySelector('.task-location');
     const durationInput = card.querySelector('.time-duration');
 
-    // 任何欄位變更時，即時清除該卡片的錯誤標記
     const clearError = () => card.classList.remove('has-error');
 
     if (!appData.isLocked) {
@@ -415,10 +548,10 @@ const bindCardEvents = (card, index) => {
                 const [eh, em] = endVal.split(':').map(Number);
                 const diff = (eh * 60 + em) - (sh * 60 + sm);
                 if (diff > 0) durationInput.value = `${Math.floor(diff / 60)} 小時 ${diff % 60} 分鐘`;
-                else if (diff === 0) durationInput.value = "0 分鐘";
-                else durationInput.value = "結束時間不可早於開始時間";
+                else if (diff === 0) durationInput.value = '0 分鐘';
+                else durationInput.value = '結束時間不可早於開始時間';
             } else {
-                durationInput.value = "系統自動計算：—";
+                durationInput.value = '系統自動計算：—';
             }
             saveData();
         };
@@ -454,6 +587,10 @@ const updateLayoutState = () => {
         addTaskBtn.style.display = 'none';
         finishDayBtn.style.display = 'none';
         lockedBanner.style.display = 'block';
+        const isToday = currentDate === getTodayString();
+        lockedBanner.textContent = isToday
+            ? '🎉 今日規劃已完成並鎖定！明天將自動刷新。'
+            : `🎉 ${formatDateDisplay(currentDate)} 的規劃已完成並鎖定！`;
     } else {
         addTaskBtn.style.display = 'flex';
         finishDayBtn.style.display = 'flex';
@@ -465,18 +602,19 @@ const updateLayoutState = () => {
    後台統計
    ========================================================= */
 const getStatsForRange = (history, startStr, endStr) => {
+    const today = getTodayString();
     let completed = 0;
     let total = 0;
     let days = 0;
 
     Object.values(history).forEach((day) => {
-        if (day.date >= startStr && day.date <= endStr && Array.isArray(day.tasks)) {
-            const dayTotal = day.tasks.length;
-            if (dayTotal === 0) return;
-            days++;
-            total += dayTotal;
-            completed += day.tasks.filter((t) => t.completed).length;
-        }
+        if (!day || !day.date || !Array.isArray(day.tasks)) return;
+        if (day.date < startStr || day.date > endStr) return;
+        if (day.date > today) return; // 未來日期不計入完成率
+        if (day.tasks.length === 0) return;
+        days++;
+        total += day.tasks.length;
+        completed += day.tasks.filter((t) => t.completed).length;
     });
 
     return {
@@ -516,10 +654,12 @@ const setOverviewCard = (key, stats) => {
 };
 
 const renderDailyRecord = (day) => {
+    const today = getTodayString();
     const tasks = Array.isArray(day.tasks) ? day.tasks : [];
     const total = tasks.length;
     const completed = tasks.filter((t) => t.completed).length;
     const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const isFuture = day.date > today;
 
     const durations = getCategoryDurations(tasks);
     const entries = Object.entries(durations);
@@ -542,9 +682,12 @@ const renderDailyRecord = (day) => {
     }
 
     return `
-        <div class="day-record">
+        <div class="day-record${isFuture ? ' is-future' : ''}">
             <div class="day-record-header">
-                <div class="day-date">${formatDateDisplay(day.date)}</div>
+                <div class="day-date">
+                    ${formatDateDisplay(day.date)}
+                    ${isFuture ? '<span class="day-date-future">已規劃</span>' : ''}
+                </div>
                 <div class="day-rate">
                     ${rate}%
                     <span class="day-rate-sub">(${completed}/${total})</span>
@@ -569,12 +712,13 @@ const renderAdmin = () => {
     const y = todayStr.slice(0, 4);
     setOverviewCard('year', getStatsForRange(history, `${y}-01-01`, `${y}-12-31`));
 
+    // 每日記錄：顯示所有已鎖定的日期（含未來已提前規劃的日期）
     const days = Object.values(history)
         .filter((d) => d && d.date && Array.isArray(d.tasks) && d.tasks.length > 0)
         .sort((a, b) => b.date.localeCompare(a.date));
 
     if (days.length === 0) {
-        dailyList.innerHTML = '<div class="empty-state">還沒有任何已鎖定的規劃紀錄。<br>完成並鎖定今日規劃後，這裡就會出現統計資料。</div>';
+        dailyList.innerHTML = '<div class="empty-state">還沒有任何已鎖定的規劃紀錄。<br>完成並鎖定規劃後，這裡就會出現統計資料。</div>';
     } else {
         dailyList.innerHTML = days.map(renderDailyRecord).join('');
     }
@@ -607,11 +751,10 @@ addTaskBtn.addEventListener('click', () => {
 
 finishDayBtn.addEventListener('click', async () => {
     const cards = document.querySelectorAll('.task-card');
-    const emptyTasks = [];       // 完全空白的任務（建議刪除）
-    const incompleteTasks = [];  // 有填東西但缺少必填欄位
+    const emptyTasks = [];
+    const incompleteTasks = [];
 
-    // 先清除所有錯誤標記
-    cards.forEach(card => card.classList.remove('has-error'));
+    cards.forEach((card) => card.classList.remove('has-error'));
 
     appData.tasks.forEach((task, index) => {
         const contentEmpty = !task.content || task.content.trim() === '';
@@ -622,14 +765,12 @@ finishDayBtn.addEventListener('click', async () => {
             !task.start &&
             !task.end;
 
-        // 1) 完全空白 → 視為空任務
         if (isCompletelyEmpty) {
             emptyTasks.push(`任務 ${index + 1}`);
             if (cards[index]) cards[index].classList.add('has-error');
             return;
         }
 
-        // 2) 有填東西 → 逐一檢查所有必填欄位
         const missing = [];
         if (contentEmpty) missing.push('任務內容');
         if (!task.category) missing.push('任務分類');
@@ -651,11 +792,7 @@ finishDayBtn.addEventListener('click', async () => {
         if (incompleteTasks.length > 0) {
             messages.push(`以下任務缺少必填欄位：\n${incompleteTasks.join('\n')}`);
         }
-        showToast(
-            `⚠️ 無法鎖定規劃！\n\n${messages.join('\n\n')}`,
-            'error',
-            5500
-        );
+        showToast(`⚠️ 無法鎖定規劃！\n\n${messages.join('\n\n')}`, 'error', 5500);
         const firstError = document.querySelector('.task-card.has-error');
         if (firstError) {
             firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -663,9 +800,12 @@ finishDayBtn.addEventListener('click', async () => {
         return;
     }
 
+    const isToday = currentDate === getTodayString();
+    const dateDisplay = isToday ? '今日' : formatDateDisplay(currentDate);
+
     const confirmed = await showConfirm({
-        title: '完成今日規劃',
-        message: '確定要完成今日規劃嗎？鎖定後將無法再修改任務內容、時間與新增刪除任務。',
+        title: '完成規劃',
+        message: `確定要完成「${dateDisplay}」的規劃嗎？鎖定後將無法再修改任務內容、時間與新增刪除任務。`,
         confirmText: '完成並鎖定',
         cancelText: '再想想'
     });
@@ -675,18 +815,31 @@ finishDayBtn.addEventListener('click', async () => {
     appData.isLocked = true;
     saveData();
     syncCurrentDayToHistory();
+    renderDateTabs();
     renderTasks();
-    showToast('🎉 今日規劃已鎖定，開始執行吧！', 'success', 3200);
+
+    showToast(
+        isToday ? '🎉 今日規劃已鎖定，開始執行吧！' : `🎉 ${formatDateDisplay(currentDate)} 的規劃已鎖定！`,
+        'success',
+        3200
+    );
 });
 
-/* --- 初始化 --- */
+/* =========================================================
+   初始化
+   ========================================================= */
 const init = () => {
     initTheme();
-    loadData();
+    loadPlanner();
+    currentDate = getTodayString();
+    loadDayData(currentDate);
+    renderDateTabs();
+    renderTasks();
+
+    // 若今天已鎖定，同步一次歷史（例如重新整理頁面時）
     if (appData.isLocked) {
         syncCurrentDayToHistory();
     }
-    renderTasks();
 };
 
 init();

@@ -177,7 +177,7 @@ body {
 [data-theme="dark"] .icon-sun { display: none; }
 [data-theme="dark"] .icon-moon { display: block; }
 
-/* 後台按鈕（與主題切換同款） */
+/* 後台按鈕 */
 .btn-admin {
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -194,6 +194,96 @@ body {
 }
 .btn-admin:hover { transform: scale(1.05); }
 .btn-admin svg { width: 20px; height: 20px; }
+
+/* ===========================
+   日期切換列
+   =========================== */
+.date-selector {
+    margin-bottom: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    padding-bottom: 6px;
+}
+
+.date-selector::-webkit-scrollbar {
+    height: 6px;
+}
+.date-selector::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 3px;
+}
+
+.date-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 2px 0;
+    min-width: max-content;
+}
+
+.date-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-width: 68px;
+    padding: 10px 12px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-main);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.date-tab:hover {
+    border-color: var(--btn-add-hover-border);
+    background-color: var(--btn-add-hover-bg);
+}
+
+.date-tab.active {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow);
+}
+
+.date-tab-label {
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--text-muted);
+    line-height: 1.1;
+}
+
+.date-tab-num {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--text-main);
+    line-height: 1.1;
+}
+
+.date-tab.active .date-tab-label,
+.date-tab.active .date-tab-num {
+    color: #ffffff;
+}
+
+.date-tab-dot {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: var(--success-color);
+}
+
+.date-tab.active .date-tab-dot {
+    background-color: #ffffff;
+}
 
 /* 任務卡片 */
 .task-card {
@@ -539,6 +629,11 @@ input[readonly] {
     padding: 14px;
 }
 
+.day-record.is-future {
+    opacity: 0.75;
+    border-style: dashed;
+}
+
 .day-record-header {
     display: flex;
     justify-content: space-between;
@@ -551,6 +646,13 @@ input[readonly] {
 .day-date {
     font-weight: bold;
     font-size: 14px;
+}
+
+.day-date-future {
+    font-size: 11px;
+    color: var(--primary-color);
+    font-weight: bold;
+    margin-left: 6px;
 }
 
 .day-rate {
@@ -566,7 +668,6 @@ input[readonly] {
     font-size: 12px;
 }
 
-/* 分類長條圖 */
 .category-bar {
     display: flex;
     width: 100%;
@@ -786,6 +887,7 @@ input[readonly] {
 .btn-theme-toggle:focus-visible,
 .btn-admin:focus-visible,
 .btn-back:focus-visible,
+.date-tab:focus-visible,
 .btn-add:focus-visible,
 .btn-finish:focus-visible,
 .btn-delete:focus-visible {
@@ -812,6 +914,10 @@ input[readonly] {
     .overview-value { font-size: 22px; }
     .admin-section { padding: 16px; }
     .admin-title { font-size: 18px; }
+
+    .date-tab { min-width: 60px; padding: 8px 10px; }
+    .date-tab-label { font-size: 11px; }
+    .date-tab-num { font-size: 13px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
