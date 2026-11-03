@@ -2,12 +2,11 @@
 const CATEGORIES = ['學習', '生活', '運動', '娛樂'];
 const LOCATIONS = ['家', '學校', '圖書館', '咖啡廳', '戶外'];
 
-const PLANNER_KEY = 'dailyPlannerMultiData'; // 多日規劃資料
-const HISTORY_KEY = 'dailyPlannerHistory';   // 歷史（已鎖定的每日快照）
-const LEGACY_KEY = 'dailyPlannerData';       // 舊版單日資料（用於遷移）
-const PREPLAN_DAYS = 7;                      // 今天 + 未來 7 天 = 8 天可選
+const PLANNER_KEY = 'dailyPlannerMultiData';
+const HISTORY_KEY = 'dailyPlannerHistory';
+const LEGACY_KEY = 'dailyPlannerData';
+const PREPLAN_DAYS = 7;
 
-// 分類顏色（用於後台長條圖）
 const CATEGORY_COLORS = {
     '學習': '#10b981',
     '生活': '#f59e0b',
@@ -64,7 +63,6 @@ const getWeekdayShort = (dateStr) => {
     return ['日', '一', '二', '三', '四', '五', '六'][parseDate(dateStr).getDay()];
 };
 
-/** 日期標籤文字（今天 / 明天 / 週X） */
 const getDateLabel = (dateStr) => {
     const today = getTodayString();
     if (dateStr === today) return '今天';
@@ -72,7 +70,6 @@ const getDateLabel = (dateStr) => {
     return `週${getWeekdayShort(dateStr)}`;
 };
 
-/** 可選日期列表：今天 + 未來 PREPLAN_DAYS 天 */
 const getSelectableDates = () => {
     const today = getTodayString();
     const arr = [];
@@ -101,8 +98,6 @@ const dailyList = document.getElementById('dailyList');
 
 /* =========================================================
    狀態
-   plannerData = { 'YYYY-MM-DD': { isLocked: bool, tasks: [...] } }
-   appData  = plannerData[currentDate]（引用，修改即同步）
    ========================================================= */
 let plannerData = {};
 let currentDate = getTodayString();
@@ -257,7 +252,6 @@ const createEmptyTasks = (count) => {
     return tasks;
 };
 
-/** 頁面載入時整理資料 */
 const loadPlanner = () => {
     const todayStr = getTodayString();
     const saved = localStorage.getItem(PLANNER_KEY);
@@ -271,7 +265,6 @@ const loadPlanner = () => {
         }
     }
 
-    // 舊版資料遷移（只在今天沒有資料時）
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy) {
         try {
@@ -288,12 +281,10 @@ const loadPlanner = () => {
         }
     }
 
-    // 清除過期日期（< 今天）
     Object.keys(plannerData).forEach((d) => {
         if (d < todayStr) delete plannerData[d];
     });
 
-    // 確保今天有資料（首次進入今天會建立 3 個空任務）
     if (!plannerData[todayStr]) {
         plannerData[todayStr] = { isLocked: false, tasks: createEmptyTasks(3) };
     }
@@ -301,7 +292,6 @@ const loadPlanner = () => {
     saveData();
 };
 
-/** 切換到某日，設定 appData 引用 */
 const loadDayData = (date) => {
     if (!plannerData[date]) {
         plannerData[date] = { isLocked: false, tasks: createEmptyTasks(3) };
@@ -313,7 +303,6 @@ const loadDayData = (date) => {
     appData = plannerData[date];
 };
 
-/** 把目前檢視日期的鎖定快照寫入歷史 */
 const syncCurrentDayToHistory = () => {
     if (!appData.isLocked) return;
     if (!appData.tasks || appData.tasks.length === 0) return;
@@ -363,7 +352,6 @@ themeToggleBtn.addEventListener('click', () => {
 let hasAutoScrolledTabs = false;
 
 const renderDateTabs = () => {
-    const today = getTodayString();
     const dates = getSelectableDates();
 
     dateTabs.innerHTML = dates.map((d) => {
@@ -380,7 +368,6 @@ const renderDateTabs = () => {
         </button>`;
     }).join('');
 
-    // 首次渲染時把 active 的日期標籤自動滾到中間
     if (!hasAutoScrolledTabs) {
         const active = dateTabs.querySelector('.date-tab.active');
         if (active) {
@@ -610,7 +597,7 @@ const getStatsForRange = (history, startStr, endStr) => {
     Object.values(history).forEach((day) => {
         if (!day || !day.date || !Array.isArray(day.tasks)) return;
         if (day.date < startStr || day.date > endStr) return;
-        if (day.date > today) return; // 未來日期不計入完成率
+        if (day.date > today) return;
         if (day.tasks.length === 0) return;
         days++;
         total += day.tasks.length;
@@ -712,7 +699,6 @@ const renderAdmin = () => {
     const y = todayStr.slice(0, 4);
     setOverviewCard('year', getStatsForRange(history, `${y}-01-01`, `${y}-12-31`));
 
-    // 每日記錄：顯示所有已鎖定的日期（含未來已提前規劃的日期）
     const days = Object.values(history)
         .filter((d) => d && d.date && Array.isArray(d.tasks) && d.tasks.length > 0)
         .sort((a, b) => b.date.localeCompare(a.date));
@@ -749,11 +735,13 @@ addTaskBtn.addEventListener('click', () => {
     renderTasks();
 });
 
+/* ---------- 鎖定前驗證（含時間邏輯檢查） ---------- */
 finishDayBtn.addEventListener('click', async () => {
     const cards = document.querySelectorAll('.task-card');
-    const emptyTasks = [];
-    const incompleteTasks = [];
+    const emptyTasks = [];      // 完全空白
+    const invalidTasks = [];    // 缺少必填欄位或時間邏輯錯誤
 
+    // 清除所有錯誤標記
     cards.forEach((card) => card.classList.remove('has-error'));
 
     appData.tasks.forEach((task, index) => {
@@ -765,34 +753,62 @@ finishDayBtn.addEventListener('click', async () => {
             !task.start &&
             !task.end;
 
+        // 1) 完全空白 → 建議填寫或刪除
         if (isCompletelyEmpty) {
             emptyTasks.push(`任務 ${index + 1}`);
             if (cards[index]) cards[index].classList.add('has-error');
             return;
         }
 
-        const missing = [];
-        if (contentEmpty) missing.push('任務內容');
-        if (!task.category) missing.push('任務分類');
-        if (!task.location) missing.push('地點');
-        if (!task.start) missing.push('開始時間');
-        if (!task.end) missing.push('結束時間');
+        // 2) 逐一檢查所有問題
+        const missingFields = [];   // 缺少的必填欄位
+        const logicErrors = [];     // 時間邏輯錯誤
 
-        if (missing.length > 0) {
-            incompleteTasks.push(`任務 ${index + 1}：缺少「${missing.join('、')}」`);
+        // 必填欄位
+        if (contentEmpty) missingFields.push('任務內容');
+        if (!task.category) missingFields.push('任務分類');
+        if (!task.location) missingFields.push('地點');
+        if (!task.start) missingFields.push('開始時間');
+        if (!task.end) missingFields.push('結束時間');
+
+        // 時間邏輯（只有當開始、結束都有值時檢查）
+        if (task.start && task.end) {
+            const [sh, sm] = task.start.split(':').map(Number);
+            const [eh, em] = task.end.split(':').map(Number);
+            const startMins = sh * 60 + sm;
+            const endMins = eh * 60 + em;
+            const diff = endMins - startMins;
+
+            if (diff < 0) {
+                logicErrors.push('結束時間不可早於開始時間');
+            } else if (diff <= 5) {
+                logicErrors.push('預計時間必須大於 5 分鐘');
+            }
+        }
+
+        if (missingFields.length > 0 || logicErrors.length > 0) {
+            const parts = [];
+            if (missingFields.length > 0) {
+                parts.push(`缺少「${missingFields.join('、')}」`);
+            }
+            if (logicErrors.length > 0) {
+                parts.push(logicErrors.join('、'));
+            }
+            invalidTasks.push(`任務 ${index + 1}：${parts.join('；')}`);
             if (cards[index]) cards[index].classList.add('has-error');
         }
     });
 
-    if (emptyTasks.length > 0 || incompleteTasks.length > 0) {
+    if (emptyTasks.length > 0 || invalidTasks.length > 0) {
         const messages = [];
         if (emptyTasks.length > 0) {
             messages.push(`以下任務為空白，請填寫或刪除：\n${emptyTasks.join('、')}`);
         }
-        if (incompleteTasks.length > 0) {
-            messages.push(`以下任務缺少必填欄位：\n${incompleteTasks.join('\n')}`);
+        if (invalidTasks.length > 0) {
+            messages.push(`以下任務有錯誤：\n${invalidTasks.join('\n')}`);
         }
         showToast(`⚠️ 無法鎖定規劃！\n\n${messages.join('\n\n')}`, 'error', 5500);
+
         const firstError = document.querySelector('.task-card.has-error');
         if (firstError) {
             firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -819,7 +835,9 @@ finishDayBtn.addEventListener('click', async () => {
     renderTasks();
 
     showToast(
-        isToday ? '🎉 今日規劃已鎖定，開始執行吧！' : `🎉 ${formatDateDisplay(currentDate)} 的規劃已鎖定！`,
+        isToday
+            ? '🎉 今日規劃已鎖定，開始執行吧！'
+            : `🎉 ${formatDateDisplay(currentDate)} 的規劃已鎖定！`,
         'success',
         3200
     );
@@ -836,7 +854,6 @@ const init = () => {
     renderDateTabs();
     renderTasks();
 
-    // 若今天已鎖定，同步一次歷史（例如重新整理頁面時）
     if (appData.isLocked) {
         syncCurrentDayToHistory();
     }
